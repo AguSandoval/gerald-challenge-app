@@ -4,9 +4,9 @@ import {
     ThemeProvider,
 } from "@react-navigation/native";
 import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
+import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
     Dimensions,
     SafeAreaView,
@@ -36,6 +36,12 @@ export default function RootLayout() {
         SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
     });
 
+    useEffect(() => {
+        return () => {
+            progress.value = 0;
+        };
+    }, [progress]);
+
     const toggleDrawer = () => {
         const nextState = progress.value === 0 ? 1 : 0;
         progress.value = withSpring(nextState, {
@@ -46,9 +52,24 @@ export default function RootLayout() {
         setDrawerOpen(nextState === 1);
     };
 
+    // in order to prevent warnings from reanimated,
+    // added this fnc that ensures the drawer is closed before navigating
+    const navigateAndCloseDrawer = (route: string) => {
+        if (progress.value === 1) {
+            toggleDrawer();
+            // uses a timeout to ensure animation completes
+            setTimeout(() => {
+                router.push(route as any); // types any for now....
+            }, 400);
+        } else {
+            router.push(route as any);
+        }
+    };
+
     const drawerAnimatedStyle = useAnimatedStyle(() => {
+        const opacity = interpolate(progress.value, [0, 1], [0, 1]);
         return {
-            opacity: 1,
+            opacity,
         };
     });
 
@@ -83,20 +104,38 @@ export default function RootLayout() {
                 <SafeAreaView style={styles.drawerContent}>
                     <Text style={styles.drawerTitle}>Beka</Text>
                     <View style={styles.drawerButtonsContainer}>
-                        <TouchableOpacity style={styles.drawerItemSelected}>
+                        <TouchableOpacity
+                            style={styles.drawerItemSelected}
+                            onPress={() =>
+                                navigateAndCloseDrawer("/(tabs)/home")
+                            }
+                        >
                             <Text style={styles.drawerItemTextSelected}>
                                 Start
                             </Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.drawerItem}>
-                            <Text style={styles.drawerItemText}>Your Cart</Text>
+                        <TouchableOpacity
+                            style={styles.drawerItem}
+                            onPress={() =>
+                                navigateAndCloseDrawer("/(tabs)/cart")
+                            }
+                        >
+                            <Text style={styles.drawerItemText}>Your cart</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.drawerItem}>
+                        <TouchableOpacity
+                            style={styles.drawerItem}
+                            onPress={() =>
+                                navigateAndCloseDrawer("/(tabs)/favourites")
+                            }
+                        >
                             <Text style={styles.drawerItemText}>
                                 Favourites
                             </Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.drawerItem}>
+                        <TouchableOpacity
+                            style={styles.drawerItem}
+                            onPress={() => navigateAndCloseDrawer("/orders")}
+                        >
                             <Text style={styles.drawerItemText}>
                                 Your orders
                             </Text>
@@ -123,11 +162,8 @@ export default function RootLayout() {
                         }
                     >
                         <Stack screenOptions={{ headerShown: false }}>
-                            <Stack.Screen
-                                name="(tabs)"
-                                options={{ headerShown: false }}
-                            />
-                            <Stack.Screen name="+not-found" />
+                            <Stack.Screen name="(tabs)" />
+                            <Stack.Screen name="orders" />
                         </Stack>
                         <StatusBar style="auto" />
                     </ThemeProvider>
@@ -156,7 +192,7 @@ const styles = StyleSheet.create({
         bottom: 0,
         width,
         backgroundColor: "#101f30",
-        zIndex: 0,
+        zIndex: 1,
     },
     drawerContent: {
         flex: 1,
